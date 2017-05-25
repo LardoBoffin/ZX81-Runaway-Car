@@ -8,16 +8,16 @@ Use pretty much any key on the left of the keyboard to move left, and any on the
 
 Overview of features: - 
 
- . Selectable difficulty level (1 to 9) which determines the starting speed
- . Engine warning light
- . Collectable brake fluid
- . Obstacles to avoid 
- . Increasing difficulty
- . High score
- . Joystick support for the ZXpand with AY add-on
- . Crash animation (sort of)
- . Instructions
- . Runs is 1K!!!
+ * Selectable difficulty level (1 to 9) which determines the starting speed
+ * Engine warning light
+ * Collectable brake fluid
+ * Obstacles to avoid 
+ * Increasing difficulty
+ * High score
+ * Joystick support for the ZXpand with AY add-on
+ * Crash animation (sort of)
+ * Instructions
+ * Runs is 1K!!!
  
 There are a couple of issues - the random obstacle generation is not as random as I would like and there is a flicker on the car redraw as the screen scrolls down. But even so not too bad for 1K I guess.
 
@@ -26,3 +26,5 @@ The initialisation process fills the screen with black characters (inverted spac
 The main process is to draw a number of random oil spills on the top line of the screen and then continuously scroll the top line down a line. Every time the top line is scrolled down a new line is created. As the screen memory maps 1:1 for the characters being displayed just moving the bytes in the display file moves the screen so no separate array is required to hold the position of spills.
 
 When a line gets to the bottom of the screen the position of the car is retained and compared to the line being moved down. If the character moving down is a spill a larger amount of brake fluid is removed otherwise 1 is removed. When brake fluid goes below a set level the warning light comes on. When it gets to zero there is a crahs animation and the game ends. Press a number to restart at the appropriate speed.
+
+The project was written using TASM and compiled on a PC. It was then tested in EightyOne (a great zeddy emulator but others doubtless exist!) and transferred to my zeddy via the awesome ZXpand.
