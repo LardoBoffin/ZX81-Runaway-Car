@@ -25,7 +25,7 @@ The initialisation process fills the screen with black characters (inverted spac
 
 The main process is to draw a number of random oil spills on the top line of the screen and then continuously scroll the top line down a line. Every time the top line is scrolled down a new line is created. As the screen memory maps 1:1 for the characters being displayed just moving the bytes in the display file moves the screen so no separate array is required to hold the position of spills.
 
-When a line gets to the bottom of the screen the position of the car is retained and compared to the line being moved down. If the character moving down is a spill a larger amount of brake fluid is removed otherwise 1 is removed. When brake fluid goes below a set level the warning light comes on. When it gets to zero there is a crahs animation and the game ends. Press a number to restart at the appropriate speed.
+When a line gets to the bottom of the screen the position of the car is retained and compared to the line being moved down. If the character moving down is a spill a larger amount of brake fluid is removed otherwise 1 is removed. When brake fluid goes below a set level the warning light comes on. When it gets to zero there is a crash animation and the game ends. Press a number to restart at the appropriate speed.
 
 The project was written using TASM and compiled on a PC. It was then tested in EightyOne (a great zeddy emulator but others doubtless exist!) and transferred to my zeddy via the awesome ZXpand.
 
