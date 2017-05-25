@@ -28,3 +28,9 @@ The main process is to draw a number of random oil spills on the top line of the
 When a line gets to the bottom of the screen the position of the car is retained and compared to the line being moved down. If the character moving down is a spill a larger amount of brake fluid is removed otherwise 1 is removed. When brake fluid goes below a set level the warning light comes on. When it gets to zero there is a crahs animation and the game ends. Press a number to restart at the appropriate speed.
 
 The project was written using TASM and compiled on a PC. It was then tested in EightyOne (a great zeddy emulator but others doubtless exist!) and transferred to my zeddy via the awesome ZXpand.
+
+I have attached a screen shot of it in action (ScreenCapture.jpg) as well as rcar.p which can be run in EightyOne (or others as well probably) or an actual zeddy and rcar.lst which is the full combined file that includes input from various files to make the project. This is assembled to Z80 and thanks to hard work of the people who do TASM etc. becomes a .P file which can be run.
+
+To follow is a full set of project files plus an explanation of the major files and the memory saving tricks employed.
+
+Lardo
