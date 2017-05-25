@@ -1,0 +1,734 @@
+0001   0000             ; V1.00 08/01/2017 - first version
+0002   0000             ; V1.01 09/01/2017 - force speed to reset after getting to max level and show version number
+0003   0000             ; V1.02 17/01/2017 - change backgound to black and implement some space saving code
+0004   0000             ; V1.03 19/01/2017 - implement ZXPand AY joystick control and high score
+0005   0000             ;
+0006   0000             ; To assembly this, either use the zxasm.bat file:
+0007   0000             ;
+0008   0000             ; zxasm rcar
+0009   0000             ;
+0010   0000             ; or... assemble with the following options:
+0011   0000             ;
+0012   0000             ; tasm -80 -b -s rcar.asm rcar.p
+0013   0000             ;
+0014   0000             ;==============================================
+0015   0000             ;    ZX81 assembler 'Runaway Car' 
+0016   0000             ;==============================================
+0017   0000             ;
+0018   0000             ;defs
+0019   0000             #include "zx81defs.asm"
+0001+  0000             ;defines to make us feel more at home
+0002+  0000             #define         DEFB .BYTE
+0003+  0000             #define         DEFW .WORD
+0004+  0000             #define         DEFM .TEXT
+0005+  0000             #define         ORG  .ORG
+0006+  0000             #define         EQU  .EQU
+0020   0000             ;EQUs for ROM routines
+0021   0000             #include "zx81rom.asm"
+0001+  0000             ;ZX81 ROM routines
+0002+  0000             PRINT			EQU $10
+0003+  0000             PRINTAT			EQU $08F5
+0004+  0000             DISPROUT		EQU $0281
+0005+  0000             DISPLAY_3		EQU $0292 ;restore registers after a 'slow' display
+0006+  0000             DISPLAY_5		EQU $02B5
+0007+  0000             PLOT			EQU $0BB2 	; note ROM plot is 0baf - however first thing it does try to pull BC from the calculator stack
+0008+  0000             							; so we'll skip past that and set BC ourselves
+0009+  0000             CLS				EQU $0A2A
+0010+  0000             KSCAN           EQU $02BB 
+0011+  0000             FINDCHR         EQU $07BD
+0012+  0000             COPY            EQU $0869
+0013+  0000             FAST            EQU $0F23
+0014+  0000             SLOW            EQU $0F2B
+0015+  0000             SLOWORFAST		EQU $0207
+0016+  0000             ;sys vars
+0017+  0000             ERR_NR			EQU $4000
+0018+  0000             JOYSTICK		EQU $1FFE0022   0000             ;ZX81 char codes/how to survive without ASCII
+0023   0000             #include "charcodes.asm"
+0001+  0000             ; ZX81 Characters.
+0002+  0000             __:				EQU	$00	;spacja
+0003+  0000             _QT:			EQU	$0B	;"
+0004+  0000             _PD:			EQU	$0C	;funt
+0005+  0000             _SD:			EQU	$0D	;$
+0006+  0000             _CL:			EQU	$0E	;:
+0007+  0000             _QM:			EQU	$0F	;?
+0008+  0000             _OP:			EQU	$10	;(
+0009+  0000             _CP:			EQU	$11	;)
+0010+  0000             _GT:			EQU	$12	;>
+0011+  0000             _LT:			EQU	$13	;<
+0012+  0000             _EQ:			EQU	$14	;=
+0013+  0000             _PL:			EQU	$15	;+
+0014+  0000             _MI:			EQU	$16	;-
+0015+  0000             _AS:			EQU	$17	;*
+0016+  0000             _SL:			EQU	$18	;/
+0017+  0000             _SC:			EQU	$19	;;
+0018+  0000             _CM:			EQU	$1A	;,
+0019+  0000             _DT:			EQU	$1B	;.
+0020+  0000             _NL:			EQU	$76	;NEWLINE
+0021+  0000             
+0022+  0000             _0				EQU $1C
+0023+  0000             _1				EQU $1D
+0024+  0000             _2				EQU $1E
+0025+  0000             _3				EQU $1F
+0026+  0000             _4				EQU $20
+0027+  0000             _5				EQU $21
+0028+  0000             _6				EQU $22
+0029+  0000             _7				EQU $23
+0030+  0000             _8				EQU $24
+0031+  0000             _9				EQU $25
+0032+  0000             _A				EQU $26
+0033+  0000             _B				EQU $27
+0034+  0000             _C				EQU $28
+0035+  0000             _D				EQU $29
+0036+  0000             _E				EQU $2A
+0037+  0000             _F				EQU $2B
+0038+  0000             _G				EQU $2C
+0039+  0000             _H				EQU $2D
+0040+  0000             _I				EQU $2E
+0041+  0000             _J				EQU $2F
+0042+  0000             _K				EQU $30
+0043+  0000             _L				EQU $31
+0044+  0000             _M				EQU $32
+0045+  0000             _N				EQU $33
+0046+  0000             _O				EQU $34
+0047+  0000             _P				EQU $35
+0048+  0000             _Q				EQU $36
+0049+  0000             _R				EQU $37
+0050+  0000             _S				EQU $38
+0051+  0000             _T				EQU $39
+0052+  0000             _U				EQU $3A
+0053+  0000             _V				EQU $3B
+0054+  0000             _W				EQU $3C
+0055+  0000             _X				EQU $3D
+0056+  0000             _Y				EQU $3E
+0057+  0000             _Z				EQU $3F
+0024   0000             ;system variables
+0025   0000             #include "zx81sys.asm"
+0001+  0000             ;system variables
+0002+  0000             ;Origin of a ZX81 file is always 16393
+0003+  0000             
+0004+  4009                             ORG 16393
+0005+  4009 C3 82 40    	JP start
+0006+  400C             ; System variables live here
+0007+  400C             ;VERSN:          DEFB 0
+0008+  400C             ;E_PPC:          DEFW 2
+0009+  400C 9C 42       D_FILE:         DEFW Display
+0010+  400E 9D 42       DF_CC:          DEFW Display+1                  ; First character of display
+0011+  4010 67 43       VARS:           DEFW Variables
+0012+  4012 00 00       DEST:           DEFW 0
+0013+  4014 68 43       E_LINE:         DEFW BasicEnd 
+0014+  4016 6C 43       CH_ADD:         DEFW BasicEnd+4                 ; Simulate SAVE "X"
+0015+  4018 00 00       X_PTR:          DEFW 0
+0016+  401A 6D 43       STKBOT:         DEFW BasicEnd+5
+0017+  401C 6D 43       STKEND:         DEFW BasicEnd+5                 ; Empty stack
+0018+  401E 00          BREG:           DEFB 0
+0019+  401F 5F 40       MEM:            DEFW MEMBOT
+0020+  4021 00          UNUSED1:        DEFB 0
+0021+  4022 02          DF_SZ:          DEFB 2
+0022+  4023 02 00       S_TOP:          DEFW $0002                      ; Top program line number
+0023+  4025 BF FD       LAST_K:         DEFW $fdbf
+0024+  4027 0F          DEBOUN:         DEFB 15
+0025+  4028 37          MARGIN:         DEFB 55
+0026+  4029 8E 42       NXTLIN:         DEFW Line2                      ; Next line address
+0027+  402B 00 00       OLDPPC:         DEFW 0
+0028+  402D 00          FLAGX:          DEFB 0
+0029+  402E 00 00       STRLEN:         DEFW 0
+0030+  4030 8D 0C       T_ADDR:         DEFW $0c8d
+0031+  4032 00 00       SEED:           DEFW 0
+0032+  4034 A3 F5       FRAMES:         DEFW $f5a3
+0033+  4036 00 00       COORDS:         DEFW 0
+0034+  4038 BC          PR_CC:          DEFB $bc
+0035+  4039 21 18       S_POSN:         DEFW $1821
+0036+  403B 40          CDFLAG:         DEFB $40
+0037+  403C             PRBUFF:         
+0038+  403C             ;DEFB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$76 ; 32 Spaces + Newline
+0039+  403C             ;====================================================================================	
+0040+  403C             ;convert 16 bit number to ASCII, taken from the internet
+0041+  403C             Num2Dec	
+0042+  403C 01 F0 D8    	ld	bc,-10000
+0043+  403F CD 54 40    	call	Num1
+0044+  4042 01 18 FC    	ld	bc,-1000
+0045+  4045 CD 54 40    	call	Num1
+0046+  4048 01 9C FF    	ld	bc,-100
+0047+  404B CD 54 40    	call	Num1
+0048+  404E 0E F6       	ld	c,-10
+0049+  4050 CD 54 40    	call	Num1
+0050+  4053 48          	ld	c,b
+0051+  4054             
+0052+  4054             Num1	
+0053+  4054 3E 1B       	ld	a,_0 -1
+0054+  4056             Num2		
+0055+  4056 3C          	inc	a
+0056+  4057 09          	add	hl,bc
+0057+  4058 38 FC       	jr	c,Num2
+0058+  405A ED 42       	sbc	hl,bc
+0059+  405C 12          	ld	(de),a
+0060+  405D 13          	inc	de
+0061+  405E C9          	ret	
+0062+  405F             ;====================================================================================
+0063+  405F             	
+0064+  405F             MEMBOT:    
+0065+  405F                  
+0066+  405F             ;====================================================================================
+0067+  405F             ;blank screen
+0068+  405F             blankScreen
+0069+  405F             
+0070+  405F             ;initialise screen	
+0071+  405F 2A 0C 40    	ld hl,(D_FILE)			;get the beginning of the screen memory
+0072+  4062 06 14       	ld b,20
+0073+  4064             blankScreenLoop
+0074+  4064 C5          	push bc
+0075+  4065 06 08       	ld b,8
+0076+  4067             blankCharLoop	
+0077+  4067 23          	inc hl
+0078+  4068 78          	ld a,b
+0079+  4069 FE 04       	cp 4
+0080+  406B 20 04       	jr nz,notWhiteLineBlank
+0081+  406D 36 85       	ld (hl),_WL
+0082+  406F 18 02       	jr nextBitScroll
+0083+  4071             notWhiteLineBlank 
+0084+  4071 36 80       	ld (hl),_BG
+0085+  4073             nextBitScroll	
+0086+  4073 10 F2       	djnz blankCharLoop		;loop back to the line by line char if B>0
+0087+  4075 C1          	pop bc
+0088+  4076 23          	inc hl
+0089+  4077 10 EB       	djnz blankScreenLoop
+0090+  4079 C9          	ret
+0091+  407A 00          		DEFB 0
+0092+  407B             		;DEFB 39,0,40,35,0,64,31,0,88,27,0,112,23,0,136,19,0,160,15,0,184,11,0,208,7,0,232,3 ; changed from 30 zeros to 28
+0093+  407B E8 03       UNUNSED2:       DEFW 1000
+0094+  407D             
+0095+  407D             ; End of system variables
+0096+  407D             
+0026   407D             
+0027   407D             ;the standard REM statement that will contain our 'hex' code, and should be at $407D
+0028   407D             lineOneREM
+0029   407D             #include "line1.asm"
+0001+  407D             ;Line 1
+0002+  407D             ;this is the REM statement...
+0003+  407D 00 00       Line1:          DEFB $00,$00                    ; Line 1
+0004+  407F 0D 02                       DEFW Line1End-Line1Text         ; Line 1 length
+0005+  4081 EA          Line1Text:      DEFB $ea                        ; REM             
+0006+  4082             
+0030   4082             
+0031   4082             ;------------------------------------------------------------
+0032   4082             ; code starts here and gets added to the end of the REM 
+0033   4082             ;------------------------------------------------------------
+0034   4082             
+0035   4082             ;wait for a key press to begin	
+0036   4082             start
+0037   4082 CD 68 42    	call delay				;in case of pressing the enter key for too long on ZXPand (otherwise the instructions are skipped)
+0038   4085 CD E5 40    	call getDifficultyLevel
+0039   4088             	
+0040   4088             ;initialise all variables used per game
+0041   4088             initialise
+0042   4088 3E C8       	ld a,200				;set the beginning brake fluid level
+0043   408A 32 81 40    	ld (brakeFluid), a
+0044   408D 21 00 00    	ld hl,0					;set the distance
+0045   4090 22 94 42    	ld (distance),hl
+0046   4093 3E 03       	ld a,3		
+0047   4095 32 7D 40    	ld (carPos),a			;set the car position
+0048   4098 2A 0C 40    	ld hl,(D_FILE)			;get the base screen address for scrolling
+0049   409B 01 A9 00    	ld bc, 169
+0050   409E 09          	add hl,bc
+0051   409F 22 90 42    	ld (lowerScreen),hl		;this is where data will be moved from (e.g. line 18)
+0052   40A2 01 09 00    	ld bc,9				;add 11 to move down a line
+0053   40A5 09          	add hl,bc	
+0054   40A6 22 8E 42    	ld (upperScreen),hl		;this is where data will be moved to (e.g. line 19)	
+0055   40A9 3A 34 40    	ld a,(16436)			;get the current scan line as a random randomSeed
+0056   40AC 32 92 42    	ld (randomSeed),a		;save it as the randomSeed
+0057   40AF             
+0058   40AF CD 5F 40    	call blankScreen
+0059   40B2             	
+0060   40B2             ;main game loop
+0061   40B2             mainLoop
+0062   40B2 CD 78 41    	call scrollDown			;scroll the screen down one line
+0063   40B5 CD 03 41    	call mainLoopSteps
+0064   40B8 3E 0B       	ld a,11					;take 11 and subtract the current game level to give between 1 to 10 moves per scroll
+0065   40BA ED 5B 97 42 	ld de,(gameLevel)
+0066   40BE 43          	ld b,e
+0067   40BF 90          	sub b
+0068   40C0 47          	ld b,a
+0069   40C1             getMovesLoop				;check for and delay the screen move down 11 - game level times per scroll (max 10, min 1 check per scroll)
+0070   40C1 C5          	push bc
+0071   40C2 CD 65 41    	call playerMove			;move the car?
+0072   40C5 CD 68 42    	call delay				;delay to slow down the screen
+0073   40C8 C1          	pop bc
+0074   40C9 10 F6       	djnz getMovesLoop
+0075   40CB 18 E5       	jr mainLoop				;repeat main lopp
+0076   40CD             	
+0077   40CD             endOfgame					;when we have run out of brake fluid
+0078   40CD 06 0A       	ld b, 10
+0079   40CF             endOfgameLoop
+0080   40CF C5          	push bc
+0081   40D0 3E 3D       	ld a, $3D				;load the inverted x	
+0082   40D2 CD E3 41    	call drawCar
+0083   40D5 CD 68 42    	call delay
+0084   40D8 3E BD       	ld a, $BD				;load the normal x	
+0085   40DA CD E3 41    	call drawCar
+0086   40DD CD 68 42    	call delay	
+0087   40E0 C1          	pop bc
+0088   40E1 10 EC       	djnz endOfgameLoop	
+0089   40E3 18 9D       	jr start			;restart game
+0090   40E5             
+0091   40E5             ;====================================================================================	
+0092   40E5             ;Subroutines
+0093   40E5             ;====================================================================================
+0094   40E5             
+0095   40E5             ;====================================================================================
+0096   40E5             ;get difficulty level
+0097   40E5             getDifficultyLevel
+0098   40E5 E5          	push hl					;save curent flags
+0099   40E6 F5          	push af
+0100   40E7             keyboardScanDifficulty	
+0101   40E7 CD BB 02    	call KSCAN				;check the keyboard
+0102   40EA 44          	ld b,h
+0103   40EB 4D          	ld c,l
+0104   40EC 51          	ld d,c
+0105   40ED 14          	inc d
+0106   40EE 28 F7       	jr z, keyboardScanDifficulty
+0107   40F0 CD BD 07    	call FINDCHR
+0108   40F3 7E          	ld a,(hl)	
+0109   40F4 D6 1C       	sub $1C				;this should leave us with 1 to 10?
+0110   40F6 FE 0B       	cp 11
+0111   40F8 FA FD 40    	jp m,finish
+0112   40FB 18 EA       	jr keyboardScanDifficulty
+0113   40FD             finish	
+0114   40FD 32 97 42    	ld (gameLevel),a		;set the game level to 1 - this affects scroll speed, impact damage and amount of brake fluid
+0115   4100 F1          	pop af
+0116   4101 E1          	pop hl
+0117   4102 C9          	ret
+0118   4103             
+0119   4103             
+0120   4103             
+0121   4103             ;====================================================================================
+0122   4103             ;main loop repeatable steps when sliding
+0123   4103             mainLoopSteps
+0124   4103             ;set up the variables for the distance display and call it	
+0125   4103 2A 8E 42    	ld hl,(upperScreen)		;get base screen address for last line
+0126   4106 01 0A 00    	ld bc, 10				;add 10 to get to correct position
+0127   4109 09          	add hl,bc
+0128   410A 36 29       	ld (hl),_D				;letter D
+0129   410C 23          	inc hl
+0130   410D 54          	ld d,h
+0131   410E 5D          	ld e,l
+0132   410F 2A 94 42    	ld hl,(distance)
+0133   4112 CD 3C 40    	call Num2Dec			;display the distance number
+0134   4115             	
+0135   4115             	;deal with the high score
+0136   4115 2A 7B 40    	ld hl,(UNUNSED2)
+0137   4118 ED 4B 94 42 	ld bc,(distance)
+0138   411C ED 42       	sbc hl,bc
+0139   411E 30 08       	jr nc,dontUpdate
+0140   4120 ED 4B 94 42 	ld bc,(distance)
+0141   4124 ED 43 7B 40 	ld (UNUNSED2),bc
+0142   4128             	
+0143   4128             dontUpdate	
+0144   4128             	
+0145   4128 13          	inc de
+0146   4129 62          	ld h,d
+0147   412A 6B          	ld l,e
+0148   412B 36 2D       	ld (hl),_H	
+0149   412D 13          	inc de
+0150   412E 2A 7B 40    	ld hl,(UNUNSED2)
+0151   4131 CD 3C 40    	call Num2Dec			;display the high score
+0152   4134             	
+0153   4134 3A 81 40    	ld a,(brakeFluid)		;check if brake fluid has run out and end game
+0154   4137 B7          	or a					;cp 0
+0155   4138 28 93       	jr z,endOfgame
+0156   413A 3D          	dec a					;loose one unit of brake fluid per scroll
+0157   413B 32 81 40    	ld (brakeFluid),a
+0158   413E             	
+0159   413E CD B7 41    	call displayBrakeFluidLevel
+0160   4141             	
+0161   4141 3A 34 40    	ld a,(16436)			;force a new randomSeed based on the screen scan line
+0162   4144 32 92 42    	ld (randomSeed),a	
+0163   4147             	
+0164   4147 2A 94 42    	ld hl, (distance)		;increase the distance recorded by 1 for each scroll
+0165   414A 23          	inc hl
+0166   414B 22 94 42    	ld (distance), hl
+0167   414E 7D          	ld a, l					;get the least significant byte of distance
+0168   414F 3D          	dec a					;cp 1					;is it a zero now? if so then we have done 256 distance units (I assume that setting a to 0 will set the flags for the jump?)
+0169   4150 20 12       	jr nz,distanceNotClocked
+0170   4152 3A 97 42    	ld a,(gameLevel)
+0171   4155 3C          	inc a
+0172   4156 FE 0B       	cp 11
+0173   4158 28 05       	jr z,resetToZero
+0174   415A 32 97 42    	ld (gameLevel),a
+0175   415D 18 05       	jr distanceNotClocked
+0176   415F             resetToZero	
+0177   415F 3E 05       	ld a,5
+0178   4161 32 97 42    	ld (gameLevel),a
+0179   4164             distanceNotClocked	
+0180   4164 C9          	ret
+0181   4165             	
+0182   4165             ;====================================================================================
+0183   4165             ;player move 
+0184   4165             playerMove
+0185   4165 CD 72 42    	call pollJoystick
+0186   4168 CD 14 42    	call getKeyPress		;get key press
+0187   416B 3E 0B       	ld a, _CAR				;load the inverted double quotes	
+0188   416D CD E3 41    	call drawCar
+0189   4170 3A 81 40    	ld a,(brakeFluid)
+0190   4173 B7          	or a							;cp 0
+0191   4174 CA CD 40    	jp z,endOfgame
+0192   4177 C9          	ret	
+0193   4178             
+0194   4178             	;====================================================================================
+0195   4178             ;start at the end of the screen memory and work our way backwards to shift down rather than up
+0196   4178             ;so line 18 overwrites 19 then 17 overwrites 18 and so on
+0197   4178             scrollDown
+0198   4178 01 AA 00    	ld bc,170				;=(19*9) - 1 characters to shift down
+0199   417B 2A 90 42    	ld hl,(lowerScreen)		
+0200   417E ED 5B 8E 42 	ld de,(upperScreen)
+0201   4182 ED B8       	lddr	
+0202   4184 CD EE 41    	call collisionDetection
+0203   4187             newLineAtTopOfScreen
+0204   4187 2A 0C 40    	ld hl,(D_FILE)			;get start of screen
+0205   418A 23          	inc hl					;don't overwrite the first blank	
+0206   418B 06 08       	ld b,8
+0207   418D             lineLoop	
+0208   418D C5          	push bc
+0209   418E 78          	ld a,b
+0210   418F FE 04       	cp 4
+0211   4191 20 02       	jr nz,notWhiteLineScroll
+0212   4193 36 85       	ld (hl),_WL
+0213   4195             notWhiteLineScroll	
+0214   4195 CD 57 42    	call randomNumber		;save random number in randomSeed
+0215   4198 FE 30       	cp $30					;compare to 30
+0216   419A 38 10       	jr c,addObstacle		;if less than then jump to add an obstacle
+0217   419C CD 57 42    	call randomNumber
+0218   419F FE 03       	cp $3
+0219   41A1 38 0D       	jr c,addBrakeFluid
+0220   41A3             	
+0221   41A3 7E          	ld a,(hl)				;get current char and do not overwrite if it is a white line
+0222   41A4 FE 85       	cp _WL
+0223   41A6 28 0A       	jr z,nextBit
+0224   41A8 36 80       	ld (hl),_BG				;otherwise leave it blank and jump to the next bit
+0225   41AA             
+0226   41AA 18 06       	jr nextBit
+0227   41AC             addObstacle	
+0228   41AC 36 88       	ld (hl),_OIL	
+0229   41AE 18 02       	jr nextBit
+0230   41B0             addBrakeFluid
+0231   41B0 36 27       	ld (hl),_BFL
+0232   41B2             nextBit	
+0233   41B2 C1          	pop bc
+0234   41B3             	
+0235   41B3 23          	inc hl					;move across the screen one position
+0236   41B4 10 D7       	djnz lineLoop
+0237   41B6 C9          	ret	
+0238   41B7             
+0239   41B7             ;====================================================================================
+0240   41B7             ;display brake fluid
+0241   41B7             displayBrakeFluidLevel
+0242   41B7 2A 8E 42    	ld hl,(upperScreen)		;get base screen address for last line
+0243   41BA 01 04 00    	ld bc, 4				;add 4 to get to correct position
+0244   41BD 09          	add hl,bc
+0245   41BE 36 27       	ld (hl),_B
+0246   41C0 23          	inc hl
+0247   41C1 36 10       	ld (hl),_OP
+0248   41C3 23          	inc hl
+0249   41C4 3A 81 40    	ld a,(brakeFluid)
+0250   41C7 FE 28       	cp 40
+0251   41C9 DA D0 41    	jp c,warning
+0252   41CC 36 00       	ld (hl),$0
+0253   41CE 18 02       	jr endOfDisplayBrakeFluid
+0254   41D0             warning
+0255   41D0 36 80       	ld (hl),_WARN
+0256   41D2             endOfDisplayBrakeFluid
+0257   41D2 23          	inc hl
+0258   41D3 36 11       	ld (hl),_CP
+0259   41D5 C9          	ret
+0260   41D6             		
+0261   41D6             ;====================================================================================
+0262   41D6             ;gets the absolute car pos as returns it in HL
+0263   41D6             getCarPos
+0264   41D6 2A 90 42    	ld hl,(lowerScreen)		;get base screen address for last line
+0265   41D9 01 03 00    	ld bc, 3				;add 4 to get to correct position
+0266   41DC 09          	add hl,bc
+0267   41DD ED 4B 7D 40 	ld bc, (carPos)			;add the current car position value
+0268   41E1 09          	add hl, bc
+0269   41E2 C9          	ret	
+0270   41E3             	
+0271   41E3             ;====================================================================================
+0272   41E3             ;get the car position and draw it based on a (either a space to erase or an inverted double quote)
+0273   41E3             drawCar
+0274   41E3 CD D6 41    	call getCarPos
+0275   41E6 77          	ld (hl), a		;draw the car
+0276   41E7 C9          	ret
+0277   41E8             
+0278   41E8             ;====================================================================================
+0279   41E8             ;load a space and draw it over the old car position
+0280   41E8             eraseCar
+0281   41E8 3E 80       	ld a, _BG
+0282   41EA CD E3 41    	call drawCar
+0283   41ED C9          	ret	
+0284   41EE             	
+0285   41EE             ;====================================================================================
+0286   41EE             ;collision detection - check the character that the car will overwrite
+0287   41EE             ;if it is an obstacle then decrease the brake fluid
+0288   41EE             collisionDetection
+0289   41EE CD D6 41    	call getCarPos		;returns the absolute address of the car	
+0290   41F1 7E          	ld a,(hl)			;get the char there
+0291   41F2 FE 88       	cp _OIL				;obstacle	
+0292   41F4 28 06       	jr z,isObstacle
+0293   41F6 FE 27       	cp _BFL
+0294   41F8 28 0E       	jr z,isBrakeFluid
+0295   41FA 18 17       	jr endOfDetection	
+0296   41FC             isObstacle				;obstacle	
+0297   41FC 3A 81 40    	ld a,(brakeFluid)	;decrease brake fluid quantity
+0298   41FF D6 05       	sub 5
+0299   4201 30 01       	jr nc,savefluid ; not below zero
+0300   4203 AF          	xor a ; make A zero
+0301   4204             savefluid:
+0302   4204 32 81 40       ld (brakeFluid),a
+0303   4207 C9             ret
+0304   4208             isBrakeFluid	
+0305   4208 3A 81 40    	ld a,(brakeFluid)	;increase brake fluid quantity by 10
+0306   420B C6 14       	add a,20
+0307   420D FE F0       	cp $F0
+0308   420F             	;jp c,incBrakeFluid	;never exceed 240 or so
+0309   420F D0          	ret nc					;ret
+0310   4210             incBrakeFluid	
+0311   4210 32 81 40    	ld (brakeFluid),a	
+0312   4213             endOfDetection
+0313   4213 C9          	ret
+0314   4214             	
+0315   4214             ;====================================================================================
+0316   4214             ;scan the keyboard
+0317   4214             
+0318   4214             getKeyPress
+0319   4214 E5          	push hl					;save curent flags
+0320   4215 F5          	push af
+0321   4216 CD BB 02    	call KSCAN				;check the keyboard
+0322   4219 7D          	ld a,l
+0323   421A 2F          	cpl
+0324   421B 6F          	ld l,a
+0325   421C E6 0F       	and $0F
+0326   421E 28 05       	jr z,notLeft			;if not left then check to see if it is right!
+0327   4220 CD 30 42    	call moveLeft
+0328   4223 18 08       	jr noKey
+0329   4225             notLeft						;it wasn't left so may be right (or else nothing pressed)
+0330   4225 7D          	ld a,l
+0331   4226 E6 F0       	and $F0
+0332   4228 28 03       	jr z,noKey
+0333   422A CD 43 42    	call moveRight
+0334   422D             noKey
+0335   422D F1          	pop af
+0336   422E E1          	pop hl
+0337   422F C9          	ret
+0338   4230             	
+0339   4230             moveLeft
+0340   4230 ED 4B 7D 40 	ld bc, (carPos)
+0341   4234 79          	ld a,c
+0342   4235 B7          	or a					;can't move to the left due to the wall
+0343   4236 C8          	ret z					;return if you can't move
+0344   4237 CD E8 41    	call eraseCar
+0345   423A 0B          	dec bc					;decrease car pos
+0346   423B ED 43 7D 40 	ld (carPos), bc			;save it	
+0347   423F CD EE 41    	call collisionDetection
+0348   4242 C9          	ret
+0349   4243             	
+0350   4243             moveRight
+0351   4243 ED 4B 7D 40 	ld bc, (carPos)
+0352   4247 79          	ld a,c
+0353   4248 FE 07       	cp 7					;can't move to the right because of the wall
+0354   424A C8          	ret z					;return if you can't move
+0355   424B CD E8 41    	call eraseCar
+0356   424E 03          	inc bc
+0357   424F ED 43 7D 40 	ld (carPos), bc	
+0358   4253 CD EE 41    	call collisionDetection
+0359   4256 C9          	ret
+0360   4257             
+0361   4257             ;====================================================================================
+0362   4257             pauseForKey
+0363   4257             	;call KSCAN	
+0364   4257             	;ld d,l
+0365   4257             	;inc d
+0366   4257             	;jr z,pauseForKey
+0367   4257             	;ret
+0368   4257             	
+0369   4257             
+0370   4257             ;====================================================================================
+0371   4257             ;taken from the internet - does some maths to arrive at a seemingly random number
+0372   4257             randomNumber			
+0373   4257 3A 92 42    	ld a, (randomSeed)
+0374   425A 80          	add a,b
+0375   425B 47          	ld b, a 
+0376   425C 0F          	rrca ; multiply by 32
+0377   425D 0F          	rrca
+0378   425E 0F          	rrca
+0379   425F EE 1F       	xor $1F
+0380   4261 80          	add a, b
+0381   4262 DE FF       	sbc a, 255 ; carry
+0382   4264 32 92 42    	ld (randomSeed), a
+0383   4267 C9          	ret	
+0384   4268             	
+0385   4268             ;====================================================================================
+0386   4268             ;taken from dr beep example flashing hello code
+0387   4268             delay
+0388   4268 21 34 40        ld   hl,FRAMES         ; fetch timer                 
+0389   426B 7E              ld   a,(hl)                                          
+0390   426C D6 05           sub  5                ; wait 10 full frames 
+0391   426E             delayLoop        
+0392   426E BE          	cp  (hl) 
+0393   426F 20 FD           jr   nz,delayLoop
+0394   4271 C9          	ret	
+0395   4272             	
+0396   4272             ;====================================================================================
+0397   4272             ;poll the joystick
+0398   4272             pollJoystick
+0399   4272 01 07 E0    	ld bc, %1110000000000111
+0400   4275 3E A0       	ld a,$a0
+0401   4277 ED 79       	out (c),a
+0402   4279 00          	nop
+0403   427A 00          	nop
+0404   427B 00          	nop
+0405   427C ED 78       	in a,(c)
+0406   427E CB 6F       	bit 5,a
+0407   4280 20 04       	jr nz, notLeftJoy
+0408   4282 CD 30 42    	call moveLeft
+0409   4285 C9          	ret
+0410   4286             notLeftJoy
+0411   4286 CB 67       	bit 4,a
+0412   4288 C0          	ret nz
+0413   4289 CD 43 42    	call moveRight
+0414   428C C9          	ret
+0415   428D             	
+0416   428D             ; ===========================================================
+0417   428D             ; code ends
+0418   428D             ; ===========================================================
+0419   428D             ;end the REM line and put in the RAND USR line to call our 'hex code'
+0420   428D             #include "line2.asm"
+0001+  428D             ;this is the end of line 1 - the REM			
+0002+  428D 76          				DEFB $76                        ; Newline				
+0003+  428E             ;followed by the the RAND USR line				
+0004+  428E             Line1End       
+0005+  428E 00 0A       Line2			DEFB $00,$0a
+0006+  4290 0A 00                       DEFW Line2End-Line2Text
+0007+  4292 F9 D4       Line2Text     	DEFB $F9,$D4                    ; RAND USR
+0008+  4294 1D          				DEFB $1D        ; 16514                
+0009+  4295 7E                          DEFB $7E                        ; Number
+0010+  4296 8F 01 04 00                 DEFB $8F,$01,$04,$00,$00        ; Numeric encoding
+0010+  429A 00 
+0011+  429B 76                          DEFB $76                        ; Newline
+0012+  429C             Line2End 
+0421   429C             
+0422   429C             ;include our variables
+0423   429C             #include "vars.asm"
+0001+  429C             ;our variables
+0002+  429C             
+0003+  429C             ;start of variables in memory (to allow easy repositioning)
+0004+  429C             varStart	EQU Line2
+0005+  429C             
+0006+  429C             ;variables
+0007+  429C             carPos  	EQU Line1	;2 bytes	
+0008+  429C             speed		EQU Line1+2	;2 bytes
+0009+  429C             brakeFluid	EQU Line1+4	;1 byte
+0010+  429C             
+0011+  429C             upperScreen	EQU Line2	;2 bytes
+0012+  429C             lowerScreen	EQU Line2+2	;2 bytes
+0013+  429C             randomSeed	EQU Line2+4	;2 bytes		
+0014+  429C             distance	EQU Line2+6	;2 bytes
+0015+  429C             dASCII		EQU Line2+8	;2 bytes
+0016+  429C             gameLevel	EQU Line2+9  ;1 byte
+0017+  429C             hSCounter	EQU Line2+10	;1 byte
+0018+  429C             hSLocation	EQU Line2+11	;1 byte
+0019+  429C             bgChar		EQU Line2+12	;1 byte
+0020+  429C             highScore	EQU Line2+13	;2 bytes
+0021+  429C             
+0022+  429C             ;constants
+0023+  429C             _BG			EQU $80
+0024+  429C             _OIL		EQU $88
+0025+  429C             _BFL		EQU $27
+0026+  429C             _CAR		EQU $0B
+0027+  429C             _WARN		EQU $80
+0028+  429C             _WL			EQU $85
+0424   429C             
+0425   429C             ;display file defintion
+0426   429C             #include "screen.asm"               
+0001+  429C             ;ZX81 screens
+0002+  429C             ; Display file (ZX81 screen) - low res screen
+0003+  429C 76          Display        	DEFB $76     
+0004+  429D 00 00 00 00                 DEFB $00,$00,$00,$00,$00,$00,$00,$00,$76 ; Line 0
+0004+  42A1 00 00 00 00 
+0004+  42A5 76 
+0005+  42A6 00 37 3A 33                 DEFB $00, _R, _U, _N, _A, _W, _A, _Y,$76 ; Line 1                
+0005+  42AA 26 3C 26 3E 
+0005+  42AE 76 
+0006+  42AF 00 28 8B 37                 DEFB $00, _C,$8B, _R,$00,$00,$00,$00,$76 ; Line 2
+0006+  42B3 00 00 00 00 
+0006+  42B7 76 
+0007+  42B8 00 00 00 00                 DEFB $00,$00,$00,$00,$00,$00,$00,$00,$76 ; Line 3				
+0007+  42BC 00 00 00 00 
+0007+  42C0 76 
+0008+  42C1 00 26 14 31                 DEFB $00, _A,_EQ, _L, _E, _F, _T,$00,$76 ; Line 4
+0008+  42C5 2A 2B 39 00 
+0008+  42C9 76 
+0009+  42CA 00 00 00 00                 DEFB $00,$00,$00,$00,$00,$00,$00,$00,$76 ; Line 5
+0009+  42CE 00 00 00 00 
+0009+  42D2 76 
+0010+  42D3 00 31 14 37                 DEFB $00, _L,_EQ, _R, _I, _G, _H, _T,$76 ; Line 6
+0010+  42D7 2E 2C 2D 39 
+0010+  42DB 76 
+0011+  42DC 00 00 00 00                 DEFB $00,$00,$00,$00,$00,$00,$00,$00,$76 ; Line 7
+0011+  42E0 00 00 00 00 
+0011+  42E4 76 
+0012+  42E5 00 00 00 00                 DEFB $00,$00,$00,$00,$00,$00,$00,$00,$76 ; Line 8
+0012+  42E9 00 00 00 00 
+0012+  42ED 76 
+0013+  42EE 00 28 34 31                 DEFB $00, _C, _O, _L, _L, _E, _C, _T,$76 ; Line 9
+0013+  42F2 31 2A 28 39 
+0013+  42F6 76 
+0014+  42F7 00 A7 37 26                 DEFB $00,$A7, _R, _A, _K, _E,$00,$00,$76 ; Line 10
+0014+  42FB 30 2A 00 00 
+0014+  42FF 76 
+0015+  4300 00 2B 31 3A                 DEFB $00, _F, _L, _U, _I, _D,$00,$00,$76 ; Line 11
+0015+  4304 2E 29 00 00 
+0015+  4308 76 
+0016+  4309 00 00 00 00                 DEFB $00,$00,$00,$00,$00,$00,$00,$00,$76 ; Line 12
+0016+  430D 00 00 00 00 
+0016+  4311 76 
+0017+  4312 00 26 3B 34                 DEFB $00, _A, _V, _O, _I, _D,$00,$00,$76 ; Line 13
+0017+  4316 2E 29 00 00 
+0017+  431A 76 
+0018+  431B 00 88 2E 31                 DEFB $00,$88, _I, _L,$00,$00,$00,$00,$76 ; Line 14
+0018+  431F 00 00 00 00 
+0018+  4323 76 
+0019+  4324 00 00 00 00                 DEFB $00,$00,$00,$00,$00,$00,$00,$00,$76 ; Line 15
+0019+  4328 00 00 00 00 
+0019+  432C 76 
+0020+  432D 00 35 37 2A 				DEFB $00, _P, _R, _E, _S, _S,$00, _A,$76 ; Line 16
+0020+  4331 38 38 00 26 
+0020+  4335 76 
+0021+  4336 00 33 3A 32                 DEFB $00, _N, _U, _M, _B, _E, _R,$00,$76 ; Line 17
+0021+  433A 27 2A 37 00 
+0021+  433E 76 
+0022+  433F 00 39 34 00 				DEFB $00, _T, _O,$00,$00,$00,$00,$00,$76 ; Line 18
+0022+  4343 00 00 00 00 
+0022+  4347 76 
+0023+  4348 00 38 39 26                 DEFB $00, _S, _T, _A, _R, _T,$00,$00,$76 ; Line 19
+0023+  434C 37 39 00 00 
+0023+  4350 76 
+0024+  4351 76                          DEFB $76 ; Line 20				
+0025+  4352 00 00 00 00                 DEFB $00,$00,$00,$00,$00,$76 ; Line 21
+0025+  4356 00 76 
+0026+  4358 00 3B 1D 1B                 DEFB $00, _V, _1,_DT, _0, _3,$00,$00,$00,$00,$00,$00,$00,$76 ; Line 22
+0026+  435C 1C 1F 00 00 
+0026+  4360 00 00 00 00 
+0026+  4364 00 76 
+0027+  4366 76                          DEFB $76 ; Line 23
+0028+  4367             
+0427   4367             
+0428   4367             ;close out the basic program
+0429   4367             #include "endbasic.asm"
+0001+  4367             ; close out the BASIC program structure
+0002+  4367             ; BASIC Variables area
+0003+  4367             Variables:      
+0004+  4367 80          VariablesEnd:   DEFB $80
+0005+  4368             BasicEnd:                              
+0006+  4368             
+0007+  4368             
+0008+  4368             #END
+0430   4368             						
+tasm: Number of errors = 0
